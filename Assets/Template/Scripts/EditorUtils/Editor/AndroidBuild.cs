@@ -31,19 +31,26 @@ namespace Template.Scripts.EditorUtils.Editor
         {
             DrawTitle();
             
-            _keystorePathName = EditorGUILayout.TextField("Keystore Path Name", _keystorePathName);
             if (GUILayout.Button("Select Keystore"))
             {
                 SetKeystorePath();
             }
-            _keystorePassword = EditorGUILayout.TextField("Keystore Path Name", _keystorePassword);
-            _keyAliasName = EditorGUILayout.TextField("Keystore Path Name", _keyAliasName);
-            _keyAliasPassword = EditorGUILayout.TextField("Keystore Path Name", _keyAliasPassword);
+            
+            _keystorePathName = EditorGUILayout.TextField("Keystore Path Name", _keystorePathName);
+            _keystorePassword = EditorGUILayout.PasswordField("Keystore Password", _keystorePassword);
+            //Alias Data
+            _keyAliasName = EditorGUILayout.TextField("Keystore Alias Name", _keyAliasName);
+            _keyAliasPassword = EditorGUILayout.PasswordField("Keystore Alias Password", _keyAliasPassword);
             
             if (GUILayout.Button("Build All"))
             {
                 Build_Android();
                 WindowsBuild();
+                
+                // Run the game (Process class from System.Diagnostics).
+                Process proc = new Process();
+                proc.StartInfo.FileName = Application.dataPath;
+                proc.Start();
             }
         }
         
@@ -69,9 +76,9 @@ namespace Template.Scripts.EditorUtils.Editor
         }
         
         //TODO: Clear unused functions
-        static void SetKeystorePath()
+        private static void SetKeystorePath()
         {
-            string path = EditorUtility.OpenFilePanel("Select a valid Keystore file", "", "keystore");
+            var path = EditorUtility.OpenFilePanel("Select a valid Keystore file", "", "keystore");
             if (path.Length != 0)
             {
                 string selectedPath = path;
@@ -108,11 +115,13 @@ namespace Template.Scripts.EditorUtils.Editor
             
             //PostBuildReport(b);
         }
-        public static void Build_Android()
+        
+        private static void Build_Android()
         {
-            string path = EditorUtility.SaveFolderPanel("Choose Location of Built Game", "", "");
-            if (string.IsNullOrEmpty(path))
-                return;
+            var path = EditorUtility.SaveFilePanel("Choose file location and set application name!", "", 
+                PlayerSettings.productName+"_"+PlayerSettings.bundleVersion+1, "apk");
+            
+            if (string.IsNullOrEmpty(path)) return;
 
             PreBuild();
 #if UNITY_ANDROID
@@ -128,18 +137,20 @@ namespace Template.Scripts.EditorUtils.Editor
             PlayerSettings.Android.keyaliasPass = "digger";
 #endif
             var b = BuildPipeline.BuildPlayer(EditorBuildSettings.scenes
-                , path + "/BuiltGameAndroid.apk", BuildTarget.Android, BuildOptions.None);
+                , path, BuildTarget.Android, BuildOptions.None);
             //PostBuildReport(b);
         }
         
         private static void WindowsBuild()
         {
             // Get filename.
-            string path = EditorUtility.SaveFolderPanel("Choose Location of Built Game", "", "");
-            string[] levels = new string[] {"Assets/Scene1.unity", "Assets/Scene2.unity"};
+            var path = EditorUtility.SaveFolderPanel("Choose Location of Built Game", "", "");
+            if (string.IsNullOrEmpty(path)) return;
+            
+            //string[] levels = new string[] {"Assets/Scene1.unity", "Assets/Scene2.unity"};
 
             // Build player.
-            BuildPipeline.BuildPlayer(EditorBuildSettings.scenes, path + "/BuiltGameWindows.exe", BuildTarget.StandaloneWindows, BuildOptions.None);
+            BuildPipeline.BuildPlayer(EditorBuildSettings.scenes, path+"_WindowsBuild.exe", BuildTarget.StandaloneWindows, BuildOptions.None);
 
             // Copy a file from the project folder to the build folder, alongside the built game.
             //FileUtil.CopyFileOrDirectory("Assets/Templates/Readme.txt", path + "Readme.txt");
@@ -150,20 +161,21 @@ namespace Template.Scripts.EditorUtils.Editor
             // proc.Start();
         }
 
+        //TODO: Clear unused functions.
         private static void PreBuild()
         {
             Assert.IsTrue(EditorBuildSettings.scenes[0].path.Contains("FirstScene"), 
-             "First Scene should be FirsScene.unity");
+             "First Scene should be FirstScene.unity");
             var buildNumber = Environment.GetEnvironmentVariable("BUILD_NUMBER");
 
-#if GEEKON_LIONSTUDIO
-            PublisherIntegrator.SetIds();
-            Assert.IsNotEmpty(LionStudios.LionSettings.Facebook.AppId, "Facebook is not set");
-            Assert.IsNotEmpty(LionStudios.LionSettings.Adjust.Token, "Adjust is not set");
-#endif
+// #if GEEKON_LIONSTUDIO
+//             PublisherIntegrator.SetIds();
+//             Assert.IsNotEmpty(LionStudios.LionSettings.Facebook.AppId, "Facebook is not set");
+//             Assert.IsNotEmpty(LionStudios.LionSettings.Adjust.Token, "Adjust is not set");
+// #endif
 
             var number = int.Parse(buildNumber ?? "0");
-            PlayerSettings.bundleVersion = $"1.{number}";
+            PlayerSettings.bundleVersion = $"0.{number}";
             
             Assert.IsTrue(PlayerSettings.applicationIdentifier.Contains("com."), "Bundle ID should be set!");
             
