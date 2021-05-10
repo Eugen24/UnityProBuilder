@@ -21,6 +21,8 @@ namespace Template.Scripts.EditorUtils.Editor
         private static string _keyAliasName;
         private static string _keyAliasPassword;
 
+        private bool showBtn;
+
         [MenuItem("UnityProBuilder/Build Project/Android Build/Publishing")]
         public static void Init()
         {
@@ -30,27 +32,39 @@ namespace Template.Scripts.EditorUtils.Editor
         private void OnGUI()
         {
             DrawTitle();
-            
-            if (GUILayout.Button("Select Keystore"))
+
+            showBtn = EditorGUILayout.Toggle("Temporary Build", showBtn);
+            if (!showBtn)
             {
-                SetKeystorePath();
+                if (GUILayout.Button("Select Keystore"))
+                {
+                    SetKeystorePath();
+                }
+
+                _keystorePathName = EditorGUILayout.TextField("Keystore Path", _keystorePathName);
+                _keystorePassword = EditorGUILayout.PasswordField("Keystore Password", _keystorePassword);
+                //Alias Data
+                _keyAliasName = EditorGUILayout.TextField("Keystore Alias Name", _keyAliasName);
+                _keyAliasPassword = EditorGUILayout.PasswordField("Keystore Alias Password", _keyAliasPassword);
+
+                if (GUILayout.Button("Build All"))
+                {
+                    if (EditorUtility.DisplayDialog("Build All", "You are sure you want to Build for all selected platforms?", "Ok", "No"))
+                    {
+                        Build_Android();
+                        WindowsBuild();
+                    }
+                }
             }
-            
-            _keystorePathName = EditorGUILayout.TextField("Keystore Path Name", _keystorePathName);
-            _keystorePassword = EditorGUILayout.PasswordField("Keystore Password", _keystorePassword);
-            //Alias Data
-            _keyAliasName = EditorGUILayout.TextField("Keystore Alias Name", _keyAliasName);
-            _keyAliasPassword = EditorGUILayout.PasswordField("Keystore Alias Password", _keyAliasPassword);
-            
-            if (GUILayout.Button("Build All"))
+            else
             {
-                Build_Android();
-                WindowsBuild();
-                
-                // Run the game (Process class from System.Diagnostics).
-                Process proc = new Process();
-                proc.StartInfo.FileName = Application.dataPath;
-                proc.Start();
+                if (GUILayout.Button("Build with Temp Keystore"))
+                {
+                    if(EditorUtility.DisplayDialog("Build with Temp Keystore", "You are sure you want to build?", "Ok", "No"))
+                    {
+                        Build_Android();
+                    }
+                }
             }
         }
         
@@ -59,20 +73,6 @@ namespace Template.Scripts.EditorUtils.Editor
             EditorGUILayout.LabelField("Unity Pro Builder", UnityBuildGUIUtility.mainTitleStyle);
             EditorGUILayout.LabelField("by Elermond Softwares", UnityBuildGUIUtility.subTitleStyle);
             GUILayout.Space(25);
-        }
-        
-        private void DrawBuildButtons()
-        {
-            int totalBuildCount = 2;
-
-            EditorGUI.BeginDisabledGroup(totalBuildCount < 1);
-            GUI.backgroundColor = Color.green;
-            if (GUILayout.Button("Perform All Enabled Builds (" + totalBuildCount + " Builds)", GUILayout.ExpandWidth(true), GUILayout.MinHeight(30)))
-            {
-                // EditorApplication.delayCall += BuildProject.BuildAll;
-            }
-            GUI.backgroundColor = UnityBuildGUIUtility.defaultBackgroundColor;
-            EditorGUI.EndDisabledGroup();
         }
         
         //TODO: Clear unused functions
@@ -102,8 +102,8 @@ namespace Template.Scripts.EditorUtils.Editor
         public static void Build_iOS()
         {
             var path = Environment.GetEnvironmentVariable("BUILD_PATH");
-            if (string.IsNullOrEmpty(path))
-                return;
+
+            if (string.IsNullOrEmpty(path)) return;
             
             PreBuild();
 #if UNITY_IOS
@@ -120,11 +120,10 @@ namespace Template.Scripts.EditorUtils.Editor
         {
             var path = EditorUtility.SaveFilePanel("Choose file location and set application name!", "", 
                 PlayerSettings.productName+"_"+PlayerSettings.bundleVersion+1, "apk");
-            
             if (string.IsNullOrEmpty(path)) return;
 
             PreBuild();
-#if UNITY_ANDROID
+//#if UNITY_ANDROID
 
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel23;
             PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
@@ -135,9 +134,14 @@ namespace Template.Scripts.EditorUtils.Editor
             PlayerSettings.Android.keystorePass = "marsdigger";
             PlayerSettings.Android.keyaliasName = "mars";
             PlayerSettings.Android.keyaliasPass = "digger";
-#endif
+//#endif
             var b = BuildPipeline.BuildPlayer(EditorBuildSettings.scenes
                 , path, BuildTarget.Android, BuildOptions.None);
+
+            // Run the game (Process class from System.Diagnostics).
+            Process proc = new Process();
+            proc.StartInfo.FileName = path;
+            proc.Start();
             //PostBuildReport(b);
         }
         
@@ -150,7 +154,7 @@ namespace Template.Scripts.EditorUtils.Editor
             //string[] levels = new string[] {"Assets/Scene1.unity", "Assets/Scene2.unity"};
 
             // Build player.
-            BuildPipeline.BuildPlayer(EditorBuildSettings.scenes, path+"_WindowsBuild.exe", BuildTarget.StandaloneWindows, BuildOptions.None);
+            BuildPipeline.BuildPlayer(EditorBuildSettings.scenes, path, BuildTarget.StandaloneWindows, BuildOptions.None);
 
             // Copy a file from the project folder to the build folder, alongside the built game.
             //FileUtil.CopyFileOrDirectory("Assets/Templates/Readme.txt", path + "Readme.txt");
@@ -166,26 +170,27 @@ namespace Template.Scripts.EditorUtils.Editor
         {
             Assert.IsTrue(EditorBuildSettings.scenes[0].path.Contains("FirstScene"), 
              "First Scene should be FirstScene.unity");
-            var buildNumber = Environment.GetEnvironmentVariable("BUILD_NUMBER");
+            //var buildNumber = Environment.GetEnvironmentVariable("BUILD_NUMBER");
 
-// #if GEEKON_LIONSTUDIO
-//             PublisherIntegrator.SetIds();
-//             Assert.IsNotEmpty(LionStudios.LionSettings.Facebook.AppId, "Facebook is not set");
-//             Assert.IsNotEmpty(LionStudios.LionSettings.Adjust.Token, "Adjust is not set");
-// #endif
+            // #if GEEKON_LIONSTUDIO
+            //             PublisherIntegrator.SetIds();
+            //             Assert.IsNotEmpty(LionStudios.LionSettings.Facebook.AppId, "Facebook is not set");
+            //             Assert.IsNotEmpty(LionStudios.LionSettings.Adjust.Token, "Adjust is not set");
+            // #endif
 
-            var number = int.Parse(buildNumber ?? "0");
-            PlayerSettings.bundleVersion = $"0.{number}";
+            var lastBuildNumber = int.Parse(PlayerSettings.bundleVersion);
+            var number = int.Parse("0." + (lastBuildNumber++));
+            PlayerSettings.bundleVersion = $"{number}";
             
             Assert.IsTrue(PlayerSettings.applicationIdentifier.Contains("com."), "Bundle ID should be set!");
             
-#if UNITY_ANDROID
+//#if UNITY_ANDROID
             PlayerSettings.Android.bundleVersionCode = number;
-#endif
+//#endif
 
-#if UNITY_IOS
+//#if UNITY_IOS
             PlayerSettings.iOS.buildNumber = number.ToString();
-#endif
+//#endif
         }
 
         private static void PostBuildReport(BuildReport result)
