@@ -99,31 +99,31 @@ namespace Template.Scripts.EditorUtils.Editor
             }
         }
 
-        public static void Build_iOS()
-        {
-            var path = Environment.GetEnvironmentVariable("BUILD_PATH");
+//        public static void Build_iOS()
+//        {
+//            var path = Environment.GetEnvironmentVariable("BUILD_PATH");
 
-            if (string.IsNullOrEmpty(path)) return;
+//            if (string.IsNullOrEmpty(path)) return;
             
-            PreBuild();
-#if UNITY_IOS
-            PlayerSettings.iOS.appleEnableAutomaticSigning = true;
-            PlayerSettings.iOS.appleDeveloperTeamID = "HJ453WUND2";
-#endif
-            var b = BuildPipeline.BuildPlayer(EditorBuildSettings.scenes
-                , path, BuildTarget.iOS, BuildOptions.None);
+//            PreBuild();
+//#if UNITY_IOS
+//            PlayerSettings.iOS.appleEnableAutomaticSigning = true;
+//            PlayerSettings.iOS.appleDeveloperTeamID = "HJ453WUND2";
+//#endif
+//            var b = BuildPipeline.BuildPlayer(EditorBuildSettings.scenes
+//                , path, BuildTarget.iOS, BuildOptions.None);
             
-            //PostBuildReport(b);
-        }
+//            //PostBuildReport(b);
+//        }
         
         private static void Build_Android()
         {
-            var path = EditorUtility.SaveFilePanel("Choose file location and set application name!", "", 
-                PlayerSettings.productName+"_"+PlayerSettings.bundleVersion+1, "apk");
-            if (string.IsNullOrEmpty(path)) return;
+            BumpAndroidBundleVersion();
+            PreBuildAndroid();
 
-            PreBuild();
-//#if UNITY_ANDROID
+            var path = EditorUtility.SaveFilePanel("Choose file location and set application name!", Path.GetDirectoryName(Application.dataPath),
+                PlayerSettings.productName + "_" + PlayerSettings.bundleVersion, "apk");
+            if (string.IsNullOrEmpty(path)) return;
 
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel23;
             PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
@@ -134,7 +134,7 @@ namespace Template.Scripts.EditorUtils.Editor
             PlayerSettings.Android.keystorePass = "marsdigger";
             PlayerSettings.Android.keyaliasName = "mars";
             PlayerSettings.Android.keyaliasPass = "digger";
-//#endif
+
             var b = BuildPipeline.BuildPlayer(EditorBuildSettings.scenes
                 , path, BuildTarget.Android, BuildOptions.None);
 
@@ -142,7 +142,8 @@ namespace Template.Scripts.EditorUtils.Editor
             Process proc = new Process();
             proc.StartInfo.FileName = path;
             proc.Start();
-            //PostBuildReport(b);
+
+            PostBuildReport(b);
         }
         
         private static void WindowsBuild()
@@ -165,38 +166,52 @@ namespace Template.Scripts.EditorUtils.Editor
             // proc.Start();
         }
 
+        // Bump version number in PlayerSettings.bundleVersion
+        private static void BumpAndroidBundleVersion()
+        {
+            if (float.TryParse(PlayerSettings.bundleVersion, out float bundleVersion))
+            {
+                bundleVersion += 0.01f;
+                PlayerSettings.bundleVersion = bundleVersion.ToString();
+                PlayerSettings.Android.bundleVersionCode = (int)bundleVersion;
+            }
+
+            if(PlayerSettings.Android.bundleVersionCode <= 0)
+            {
+                PlayerSettings.Android.bundleVersionCode = 1;
+            }
+            else
+            {
+                int androidBundleVer = PlayerSettings.Android.bundleVersionCode;
+                PlayerSettings.Android.bundleVersionCode = androidBundleVer+1;
+            }
+        }
+
         //TODO: Clear unused functions.
-        private static void PreBuild()
+        private static void PreBuildAndroid()
         {
             Assert.IsTrue(EditorBuildSettings.scenes[0].path.Contains("FirstScene"), 
              "First Scene should be FirstScene.unity");
-            //var buildNumber = Environment.GetEnvironmentVariable("BUILD_NUMBER");
 
-            // #if GEEKON_LIONSTUDIO
-            //             PublisherIntegrator.SetIds();
-            //             Assert.IsNotEmpty(LionStudios.LionSettings.Facebook.AppId, "Facebook is not set");
-            //             Assert.IsNotEmpty(LionStudios.LionSettings.Adjust.Token, "Adjust is not set");
-            // #endif
-
-            var lastBuildNumber = int.Parse(PlayerSettings.bundleVersion);
-            var number = int.Parse("0." + (lastBuildNumber++));
-            PlayerSettings.bundleVersion = $"{number}";
-            
             Assert.IsTrue(PlayerSettings.applicationIdentifier.Contains("com."), "Bundle ID should be set!");
-            
-//#if UNITY_ANDROID
-            PlayerSettings.Android.bundleVersionCode = number;
-//#endif
 
-//#if UNITY_IOS
-            PlayerSettings.iOS.buildNumber = number.ToString();
-//#endif
+            //var lastBuildNumber = int.Parse(PlayerSettings.bundleVersion);
+            //var number = int.Parse("0." + (lastBuildNumber++));
+            //PlayerSettings.bundleVersion = $"{number}";
+
+            ////#if UNITY_ANDROID
+            //            PlayerSettings.Android.bundleVersionCode = number;
+            ////#endif
+
+            ////#if UNITY_IOS
+            //            PlayerSettings.iOS.buildNumber = number.ToString();
+            //#endif
         }
 
         private static void PostBuildReport(BuildReport result)
         {
-            var fileOnFinish = Environment.GetEnvironmentVariable("UNITY_STATUS");
-            Debug.Log(fileOnFinish);
+            var fileOnFinish = result.strippingInfo;
+            Debug.Log("All build Log: " + fileOnFinish);
             
 #if UNITY_ANDROID
             Debug.Log("BuildNumber: " + PlayerSettings.Android.bundleVersionCode);
@@ -208,12 +223,57 @@ namespace Template.Scripts.EditorUtils.Editor
 
             if (result.summary.result == BuildResult.Succeeded)
             {
-                File.WriteAllText(fileOnFinish, "Success");
+                WriteToFile("AndroidLogSucces", fileOnFinish.ToString());
             }
             else
             {
-                File.WriteAllText(fileOnFinish, "Fail");
+                WriteToFile("AndroidLogError", fileOnFinish.ToString());
             }
         }
+
+        /// <summary>
+        /// <param> Writes the string message into the logFilesGPSUnity.txt in the internal storage\android\data\com.armis.arimarn\files\</para>
+        /// You need to write a '\n' in the end or beginning of each message, otherwise, the message will be printed in a row.
+        /// <param name="newFileName">String to file new name (Only set name) (Auto extension set > .txt)</param>
+        /// <param name="messageToAdd">String to print in the file</param>
+        /// </summary>
+        public static void WriteToFile(string newFileName, string messageToAdd)
+        {
+            var gpsFilePath = Application.persistentDataPath + "/" + newFileName + ".txt";
+
+            //if you want to empty the file every time the app starts, only delete and create a new one.
+            //if file exists
+            if (File.Exists(gpsFilePath))
+            {
+                //delete file
+                try
+                {
+                    File.Delete(gpsFilePath);
+                    Debug.Log("[Utils Script]: " + newFileName + ".txt Log Deleted Successfully!");
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError("[Utils Script]: Cannot delete " + newFileName + ".txt Log - Exception: " + e);
+                }
+            }
+
+            //Write log data in created file
+            try
+            {
+                //Create the stream writer to the specified file path with specified fileName at end
+                StreamWriter fileWriter = new StreamWriter(gpsFilePath, true);
+
+                //write the string into the file
+                fileWriter.Write(messageToAdd + '\n');
+
+                // close the Stream Writer
+                fileWriter.Close();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError("[Utils Script]: Cannot write in the GPS File Log - Exception: " + e);
+            }
+        }
+
     }
 }

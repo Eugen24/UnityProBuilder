@@ -15,7 +15,7 @@ namespace Template.Scripts.EditorUtils.Editor
         public int callbackOrder => 0;
         public void OnPostprocessBuild(BuildReport report)
         {
-            UnityEngine.Debug.Log("BundleID:" + UnityEngine.Application.identifier);
+            UnityEngine.Debug.Log("BundleID: " + UnityEngine.Application.identifier);
             if (report.summary.platform == BuildTarget.iOS) // Check if the build is for iOS 
             {
 #if UNITY_IOS
