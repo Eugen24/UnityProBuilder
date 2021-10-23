@@ -34,7 +34,7 @@ namespace Template.Scripts.EditorUtils.Editor
         {
             DrawTitle();
 
-            telegramSend = EditorGUILayout.Toggle("Send After Build Status to telegram", telegramSend);
+            telegramSend = EditorGUILayout.Toggle("Send Notif to Telegram", telegramSend);
 
             showBtn = EditorGUILayout.Toggle("Temporary Build", showBtn);
             if (!showBtn)
