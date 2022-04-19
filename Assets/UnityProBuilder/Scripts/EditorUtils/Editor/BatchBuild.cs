@@ -1,11 +1,9 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace Template.Scripts.EditorUtils.Editor
 {
@@ -27,6 +25,7 @@ namespace Template.Scripts.EditorUtils.Editor
             
             PostBuildReport(b);
         }
+
         public static void Build_Android()
         {
             var path = Environment.GetEnvironmentVariable("BUILD_PATH") + "/AndroidBuild.apk";
@@ -65,8 +64,10 @@ namespace Template.Scripts.EditorUtils.Editor
 
             var number = int.Parse(buildNumber ?? "0");
             PlayerSettings.bundleVersion = $"1.{number}";
-            
-            Assert.IsTrue(PlayerSettings.applicationIdentifier.Contains("com.geekongames."), "Bundle ID should be set!");
+
+            bool bundleSeted = !PlayerSettings.applicationIdentifier.Contains("Default") &&
+                !PlayerSettings.applicationIdentifier.Contains("app-category");
+            Assert.IsTrue(bundleSeted, "Bundle ID should be set!");
             
 #if UNITY_ANDROID
             PlayerSettings.Android.bundleVersionCode = number;
@@ -81,6 +82,21 @@ namespace Template.Scripts.EditorUtils.Editor
         private static void PostBuildReport(BuildReport result)
         {
             var fileOnFinish = Environment.GetEnvironmentVariable("UNITY_STATUS");
+
+            //If you have your backed function,
+            //Set Parameter > ( name ) as project/app name,
+            //And Parameter > ( catch ) as build info/status on finish
+            if (result.summary.result == BuildResult.Succeeded)
+            {
+                Application.OpenURL("http://eloads.ddns.net/unity/build_status_send.php?name="
+                    +PlayerSettings.productName+"&catch=Successfully Build! /n Build Summary > "+result);
+            }
+            else
+            {
+                Application.OpenURL("http://eloads.ddns.net/unity/build_status_send.php?name="
+                    + PlayerSettings.productName + "&catch=Unsuccessfully Build! /n Build Summary > " + result);
+            }
+
             Debug.Log(fileOnFinish);
             
 #if UNITY_ANDROID

@@ -29,7 +29,6 @@ namespace Template.Scripts.EditorUtils.Editor
 
                 File.WriteAllText(plistPath, plist.WriteToString()); // Override Info.plist
 #endif
-
             }
         }
     }

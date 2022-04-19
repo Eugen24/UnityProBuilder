@@ -27,7 +27,7 @@ public class SerializeMe : EditorWindow
 
 	public SerializeMe()
 	{
-		m_Class1 = (NestedClass)ScriptableObject.CreateInstance("NestedClass");
+		m_Class1 = (NestedClass)CreateInstance("NestedClass");
 		m_Class2 = m_Class1;
 	}
 

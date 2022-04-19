@@ -16,7 +16,6 @@ namespace Template.Scripts.EditorUtils.Editor
             }
  
             return a;
- 
         }
         
         public static T[] GetAllInstancesMonoByName<T>(string name) where T : MonoBehaviour
@@ -30,9 +29,6 @@ namespace Template.Scripts.EditorUtils.Editor
             }
  
             return a;
- 
         }
     }
-    
-    
 }
