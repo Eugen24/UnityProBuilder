@@ -1,22 +1,18 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Mail;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using NUnit.Framework;
 using UnityEditor;
-using UnityEditor.Build.Content;
 using UnityEditor.Build.Reporting;
-using UnityEditor.Graphs;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using Debug = UnityEngine.Debug;
 using Object = System.Object;
 
-namespace Template.Scripts.EditorUtils.Editor
+namespace UnityProBuilder.Editor.Scripts
 {
     public class UnityProBuilder : EditorWindow
     {
@@ -50,12 +46,8 @@ namespace Template.Scripts.EditorUtils.Editor
         [SerializeField]
         private bool telegramApi = true;
 
-        [MenuItem("UnityProBuilder/Build Project/Android Build/Publishing")]
-        public static void Init()
-        {
-            GetWindow<UnityProBuilder>("Publishing Android Build");
-        }
-
+        [SerializeField] private static string _defaultSettingsPath = "Assets/UnityProBuilder/Editor/Resources/";
+        [SerializeField] private static string _defaultSettingsName = "MainSettings.asset";
         [SerializeField] private static bool _privateGlobalSettings;
         [SerializeField] private static UnityProBuilder _settings;
 
@@ -74,30 +66,35 @@ namespace Template.Scripts.EditorUtils.Editor
 
         //}
 
-        public static void InitSettings1()
-        {
-            try
-            {
-                _settings = (UnityProBuilder)Resources.Load("UnityProBuilder/Settings", typeof(UnityProBuilder));
-            }
-            catch (Exception ex)
-            {
-                Debug.Log("Could not get Settings during event validation \n" + ex.ToString());
-            }
-
-        }
-
         public static UnityProBuilder SettingsGA
         {
             get
             {
                 if (_settings == null)
                 {
-                    if(!_privateGlobalSettings) InitAPI();
+                    if (!_privateGlobalSettings) InitAPI();
                 }
                 return _settings;
             }
             private set { _settings = value; }
+        }
+
+        [MenuItem("UnityProBuilder/Build Project/Android Build/Publishing")]
+        public static void Init()
+        {
+            GetWindow<UnityProBuilder>("Publishing Android Build");
+        }
+
+        public static void InitSettings1()
+        {
+            try
+            {
+                _settings = (UnityProBuilder)AssetDatabase.LoadAssetAtPath(_defaultSettingsPath + _defaultSettingsName, typeof(UnityProBuilder));
+            }
+            catch (Exception ex)
+            {
+                Debug.Log("Could not get Settings during event validation \n" + ex.ToString());
+            }
         }
 
         private static void InitAPI()
@@ -108,6 +105,7 @@ namespace Template.Scripts.EditorUtils.Editor
             CreateSettingsInstance();
         }
 
+        [MenuItem("UnityProBuilder/Create a new settings asset")]
         private static void CreateSettingsInstance()
         {
             try
@@ -116,18 +114,17 @@ namespace Template.Scripts.EditorUtils.Editor
                 if (_settings == null)
                 {
                     //If the settings asset doesn't exist, then create it. We require a resources folder
-                    if (!Directory.Exists(Application.dataPath + "/Resources"))
+                    if (!Directory.Exists(Application.dataPath + "/" + _defaultSettingsPath))
                     {
-                        Directory.CreateDirectory(Application.dataPath + "/Resources");
+                        Directory.CreateDirectory(Application.dataPath + "/" + _defaultSettingsPath);
                     }
-                    if (!Directory.Exists(Application.dataPath + "/Resources/UnityProBuilder"))
+                    if (!Directory.Exists(Application.dataPath + "/" + _defaultSettingsPath))
                     {
-                        Directory.CreateDirectory(Application.dataPath + "/Resources/UnityProBuilder");
+                        Directory.CreateDirectory(Application.dataPath + "/" + _defaultSettingsPath);
                         Debug.LogWarning("UnityProBuilder: Resources/UnityProBuilder folder is required to store settings. it was created ");
                     }
 
-                    const string path = "Assets/Resources/UnityProBuilder/Settings.asset";
-
+                    string path = "Assets/" + _defaultSettingsPath + "/MainSettings.asset";
                     if (File.Exists(path))
                     {
                         AssetDatabase.DeleteAsset(path);

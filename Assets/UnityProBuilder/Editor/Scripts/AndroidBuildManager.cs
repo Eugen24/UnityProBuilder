@@ -1,20 +1,16 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using NUnit.Framework;
 using UnityEditor;
-using UnityEditor.Build.Content;
 using UnityEditor.Build.Reporting;
-using UnityEditor.Graphs;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using Debug = UnityEngine.Debug;
 using Object = System.Object;
 
-namespace Template.Scripts.EditorUtils.Editor
+namespace UnityProBuilder.Editor.Scripts
 {
-    public class AndroidBuild : EditorWindow
+    public class AndroidBuildManager : EditorWindow
     {
         [SerializeField] private static string _keystorePathName = "Assets/Template/GPlay/user.keystore";
         private static string _keystorePassword;
@@ -24,10 +20,48 @@ namespace Template.Scripts.EditorUtils.Editor
         private bool showBtn;
         private bool telegramSend;
 
+        [SerializeField] private static bool _privateGlobalSettings;
+        [SerializeField] private static string _defaultSettingsPath = "Assets/UnityProBuilder/Editor/Resources/";
+        [SerializeField] private static string _defaultSettingsName = "AndroidSettings.asset";
+        [SerializeField] private static AndroidBuildManager _settings;
+
+        public static AndroidBuildManager SettingsGA
+        {
+            get
+            {
+                if (_settings == null)
+                {
+                    if (!_privateGlobalSettings) InitAPI();
+                }
+                return _settings;
+            }
+            private set { _settings = value; }
+        }
+
+        public static void InitSettings1()
+        {
+            try
+            {
+                _settings = (AndroidBuildManager)AssetDatabase.LoadAssetAtPath(_defaultSettingsPath + _defaultSettingsName, typeof(AndroidBuildManager));
+            }
+            catch (Exception ex)
+            {
+                Debug.Log("Could not get Settings during event validation \n" + ex.ToString());
+            }
+        }
+
+        private static void InitAPI()
+        {
+            if (_privateGlobalSettings) return;
+
+            InitSettings1();
+            //CreateSettingsInstance();
+        }
+
         [MenuItem("UnityProBuilder/Build Project/Android Build/Publishing")]
         public static void Init()
         {
-            GetWindow<AndroidBuild>("Publishing Android Build");
+            //GetWindow<AndroidBuild>("Publishing Android Build");
         }
         
         private void OnGUI()

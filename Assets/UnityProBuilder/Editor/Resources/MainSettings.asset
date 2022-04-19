@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fea7f8d6034e90645998619f4d6ba768, type: 3}
-  m_Name: Settings
+  m_Name: MainSettings
   m_EditorClassIdentifier: 
   m_MinSize: {x: 100, y: 100}
   m_MaxSize: {x: 4000, y: 4000}
   m_TitleContent:
-    m_Text: Template.Scripts.EditorUtils.Editor.UnityProBuilder
+    m_Text: UnityProBuilder.Editor.Scripts.UnityProBuilder
     m_Image: {fileID: 0}
     m_Tooltip: 
   m_Pos:

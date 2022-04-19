@@ -1,6 +1,4 @@
-﻿using System;
-using System.IO;
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
@@ -8,14 +6,14 @@ using UnityEngine;
 using UnityEditor.iOS.Xcode;
 #endif
 
-namespace Template.Scripts.EditorUtils.Editor
+namespace UnityProBuilder.Editor.Scripts
 {
     public class PostBuildSetup : IPostprocessBuildWithReport
     {
         public int callbackOrder => 0;
         public void OnPostprocessBuild(BuildReport report)
         {
-            UnityEngine.Debug.Log("BundleID: " + UnityEngine.Application.identifier);
+            Debug.Log("BundleID: " + UnityEngine.Application.identifier);
             if (report.summary.platform == BuildTarget.iOS) // Check if the build is for iOS 
             {
 #if UNITY_IOS

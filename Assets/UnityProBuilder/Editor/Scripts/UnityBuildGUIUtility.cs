@@ -1,11 +1,11 @@
 ﻿using UnityEditor;
 using UnityEngine;
 
-namespace Template.Scripts.EditorUtils.Editor
+namespace UnityProBuilder.Editor.Scripts
 {
     public class UnityBuildGUIUtility
     {
-        private const string HELP_URL = @"https://github.com/Chaser324/unity-build/wiki/{0}";
+        private const string HELP_URL = "https://discord.gg/2AfMZU4fY4";
 
         #region Singleton
 

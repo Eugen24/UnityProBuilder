@@ -5,7 +5,7 @@ using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 
-namespace Template.Scripts.EditorUtils.Editor
+namespace UnityProBuilder.Editor.Scripts
 {
     public static class BatchBuild 
     {
@@ -29,8 +29,7 @@ namespace Template.Scripts.EditorUtils.Editor
         public static void Build_Android()
         {
             var path = Environment.GetEnvironmentVariable("BUILD_PATH") + "/AndroidBuild.apk";
-            if (string.IsNullOrEmpty(path))
-                return;
+            if (string.IsNullOrEmpty(path)) return;
 
             PreBuild();
 #if UNITY_ANDROID
@@ -78,26 +77,9 @@ namespace Template.Scripts.EditorUtils.Editor
 #endif
         }
 
-
         private static void PostBuildReport(BuildReport result)
         {
             var fileOnFinish = Environment.GetEnvironmentVariable("UNITY_STATUS");
-
-            //If you have your backed function,
-            //Set Parameter > ( name ) as project/app name,
-            //And Parameter > ( catch ) as build info/status on finish
-            if (result.summary.result == BuildResult.Succeeded)
-            {
-                Application.OpenURL("http://eloads.ddns.net/unity/build_status_send.php?name="
-                    +PlayerSettings.productName+"&catch=Successfully Build! /n Build Summary > "+result);
-            }
-            else
-            {
-                Application.OpenURL("http://eloads.ddns.net/unity/build_status_send.php?name="
-                    + PlayerSettings.productName + "&catch=Unsuccessfully Build! /n Build Summary > " + result);
-            }
-
-            Debug.Log(fileOnFinish);
             
 #if UNITY_ANDROID
             Debug.Log("BuildNumber: " + PlayerSettings.Android.bundleVersionCode);
@@ -115,6 +97,8 @@ namespace Template.Scripts.EditorUtils.Editor
             {
                 File.WriteAllText(fileOnFinish, "Fail");
             }
+
+            Debug.Log(fileOnFinish);
         }
     }
 }
