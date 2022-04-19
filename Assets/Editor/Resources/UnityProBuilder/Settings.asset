@@ -25,4 +25,15 @@ MonoBehaviour:
     width: 320
     height: 550
   m_ViewDataDictionary: {fileID: 0}
-  showBtn: 1
+  _telegramToken: 
+  _telegramChatId: 
+  _mailSendAddress: 
+  _mailSendPass: 
+  sendToList: []
+  _keystorePathName: Assets/Resources/UnityProBuilder/GPlay/user.keystore
+  _keyAliasName: 
+  showBtn: 0
+  notificationSend: 0
+  telegramSend: 0
+  mailSend: 0
+  telegramApi: 1

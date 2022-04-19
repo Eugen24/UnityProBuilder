@@ -26,9 +26,12 @@ namespace Template.Scripts.EditorUtils.Editor
         private string _telegramChatId = "";
 
         [SerializeField]
-        private string _mailSendT = "";
+        private string _mailSendAddress = "";
         [SerializeField]
         private string _mailSendPass = "";
+
+        [SerializeField]
+        private string[] sendToList;
 
         [SerializeField] private string _keystorePathName = "Assets/Resources/UnityProBuilder/GPlay/user.keystore";
         private string _keystorePassword;
@@ -53,14 +56,29 @@ namespace Template.Scripts.EditorUtils.Editor
             GetWindow<UnityProBuilder>("Publishing Android Build");
         }
 
-        private static UnityProBuilder _settings;
-        private static UnityProBuilder _settings2;
+        [SerializeField] private static bool _privateGlobalSettings;
+        [SerializeField] private static UnityProBuilder _settings;
 
-        public static void InitSettings2()
+        //private static UnityProBuilder _settings2;
+
+        //public static void InitSettings2()
+        //{
+        //    try
+        //    {
+        //        _settings2 = (UnityProBuilder)Resources.Load("UnityProBuilder/Settings", typeof(UnityProBuilder));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Debug.Log("Could not get Settings during event validation \n" + ex.ToString());
+        //    }
+
+        //}
+
+        public static void InitSettings1()
         {
             try
             {
-                _settings2 = (UnityProBuilder)Resources.Load("UnityProBuilder/Settings", typeof(UnityProBuilder));
+                _settings = (UnityProBuilder)Resources.Load("UnityProBuilder/Settings", typeof(UnityProBuilder));
             }
             catch (Exception ex)
             {
@@ -75,7 +93,7 @@ namespace Template.Scripts.EditorUtils.Editor
             {
                 if (_settings == null)
                 {
-                    InitAPI();
+                    if(!_privateGlobalSettings) InitAPI();
                 }
                 return _settings;
             }
@@ -84,11 +102,16 @@ namespace Template.Scripts.EditorUtils.Editor
 
         private static void InitAPI()
         {
+            if (_privateGlobalSettings) return;
+
+            InitSettings1();
+            CreateSettingsInstance();
+        }
+
+        private static void CreateSettingsInstance()
+        {
             try
             {
-                _settings = (UnityProBuilder)Resources.Load("UnityProBuilder/Settings", typeof(UnityProBuilder));
-                InitSettings2();
-
 #if UNITY_EDITOR
                 if (_settings == null)
                 {
@@ -111,7 +134,7 @@ namespace Template.Scripts.EditorUtils.Editor
                         AssetDatabase.Refresh();
                     }
 
-                    var asset = ScriptableObject.CreateInstance<UnityProBuilder>();
+                    var asset = CreateInstance<UnityProBuilder>();
                     AssetDatabase.CreateAsset(asset, path);
                     AssetDatabase.Refresh();
 
@@ -124,7 +147,7 @@ namespace Template.Scripts.EditorUtils.Editor
                 }
 #endif
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
                 Debug.Log("Error getting Settings in InitAPI: " + e.Message);
             }
@@ -135,10 +158,23 @@ namespace Template.Scripts.EditorUtils.Editor
             InitAPI();
             DrawTitle();
 
-            notificationSend = EditorGUILayout.Toggle("Send Build Status Notif.", notificationSend);
-            if(notificationSend)
+            _privateGlobalSettings = EditorGUILayout.Toggle("Private Global Settings", _privateGlobalSettings);
+            _settings = (UnityProBuilder)EditorGUILayout.ObjectField("Global Settings", _settings, typeof(UnityProBuilder), _privateGlobalSettings);
+            if (_privateGlobalSettings)
             {
-                telegramSend = EditorGUILayout.Toggle("Send Build Status Notif.", telegramSend);
+
+            }
+
+            DrawSendNotifView();
+            DrawBuildDataActionView();
+        }
+
+        private void DrawSendNotifView()
+        {
+            notificationSend = EditorGUILayout.Toggle("Send Build Status Notif.", notificationSend);
+            if (notificationSend)
+            {
+                telegramSend = EditorGUILayout.Toggle("Telegram Send", telegramSend);
                 if (telegramSend)
                 {
                     telegramApi = EditorGUILayout.Toggle("TelegramApi", true);
@@ -150,32 +186,29 @@ namespace Template.Scripts.EditorUtils.Editor
 
                         if (GUILayout.Button("Test Notification"))
                         {
-                            if (ValidTelegramIds())
-                            {
-                                TelegramSendMessage(_telegramToken, _telegramChatId, "Test");
-                            }
+                            if (ValidTelegramIds()) TelegramSendMessage(_telegramToken, _telegramChatId, "Test");
                             else Debug.LogError("Invalid Telegram Bot Token & Invalid Chat Id!");
                         }
                     }
                 }
 
-                mailSend = EditorGUILayout.Toggle("Send Build Status Notif.", mailSend);
+                mailSend = EditorGUILayout.Toggle("Mail Send", mailSend);
                 if (mailSend)
                 {
-                    _telegramToken = EditorGUILayout.TextField("Your Token", _telegramToken);
-                    _telegramChatId = EditorGUILayout.TextField("Your Chat Id", _telegramChatId);
+                    _mailSendAddress = EditorGUILayout.TextField("Your Send Mail", _mailSendAddress);
+                    _mailSendPass = EditorGUILayout.TextField("Your Send Mail Pass", _mailSendPass);
 
                     if (GUILayout.Button("Test Notification"))
                     {
-                        if (ValidTelegramIds())
-                        {
-                            TelegramSendMessage(_telegramToken, _telegramChatId, "Test");
-                        }
-                        else Debug.LogError("Invalid Telegram Bot Token & Invalid Chat Id!");
-                    }
+                        if(ValidMailAddress()) SendMail(_mailSendAddress, _mailSendPass, "Test");
+                        else Debug.LogError("Invalid Mail Address & Password!");
+                    } 
                 }
             }
+        }
 
+        private void DrawBuildDataActionView()
+        {
             showBtn = EditorGUILayout.Toggle("Temporary Android Build", showBtn);
             if (!showBtn)
             {
@@ -201,7 +234,7 @@ namespace Template.Scripts.EditorUtils.Editor
             {
                 if (GUILayout.Button("Build with Temp Keystore"))
                 {
-                    if(EditorUtility.DisplayDialog("Build with Temp Keystore", "You are sure you want to build?", "Ok", "No"))
+                    if (EditorUtility.DisplayDialog("Build with Temp Keystore", "You are sure you want to build?", "Ok", "No"))
                     {
                         Build_Android();
                     }
@@ -338,9 +371,13 @@ namespace Template.Scripts.EditorUtils.Editor
         {
             // Verify if first scene exist > for successfully uploading app on store,
             // Store Validation.
-            bool hasStartScene = EditorBuildSettings.scenes[0].path.Contains("First") ||
-                EditorBuildSettings.scenes[0].path.Contains("Start");
-            Assert.IsTrue(hasStartScene, "First Scene should be FirstScene.unity");
+
+            //if(EditorUserBuildSettings.buildAppBundle)
+            //{
+            //    bool hasStartScene = EditorBuildSettings.scenes[0].path.Contains("First") ||
+            //    EditorBuildSettings.scenes[0].path.Contains("Start");
+            //    Assert.IsTrue(hasStartScene, "First Scene should be FirstScene.unity");
+            //}
 
             // Application Identifier > Store Validation.
             bool bundleSeted = !PlayerSettings.applicationIdentifier.Contains("Default") ||
@@ -369,20 +406,23 @@ namespace Template.Scripts.EditorUtils.Editor
             Debug.Log("All build Log: " + fileOnFinish);
         }
 
-        public static bool ValidTelegramIds()
+        public static bool ValidMailAddress()
         {
-            return !string.IsNullOrEmpty(_settings._telegramToken) && !string.IsNullOrEmpty(_settings._telegramToken);
+            return !string.IsNullOrEmpty(_settings._mailSendAddress) && !string.IsNullOrEmpty(_settings._mailSendPass);
         }
 
-        public void SendMail(string mailBody = "Test Mail Body", string mailSubject = "Report Mail", string sendTo = "contact@digup.app",
-        string sendFrom = "digup.test1@gmail.com", string sendFromPass = "diguptest@2022")
+        public void SendMail(string sendFrom = "digup.test1@gmail.com", string sendFromPass = "diguptest@2022", string mailBody = "Test Mail Body", 
+            string mailSubject = "Report Mail")
         {
             MailMessage mail = new MailMessage
             {
                 From = new MailAddress(sendFrom)
             };
 
-            mail.To.Add(sendTo);
+            for (int i = 0; i < sendToList.Length; i++)
+            {
+                mail.To.Add(sendToList[i]);
+            }
             mail.Subject = mailSubject;
             mail.Body = mailBody;
 
@@ -397,7 +437,12 @@ namespace Template.Scripts.EditorUtils.Editor
                 { return true; };
             smtpServer.Send(mail);
 
-            Debug.Log("Succesfully Sent! >>>" + sendTo + " Body: " + mailBody);
+            //Debug.Log("Succesfully Sent! >>>" + sendTo + " Body: " + mailBody);
+        }
+
+        public static bool ValidTelegramIds()
+        {
+            return !string.IsNullOrEmpty(_settings._telegramToken) && !string.IsNullOrEmpty(_settings._telegramToken);
         }
 
         public static string TelegramSendMessage(string apilToken, string destID, string text)
