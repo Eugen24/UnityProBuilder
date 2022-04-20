@@ -152,7 +152,13 @@ namespace UnityProBuilder.Editor.Scripts
         {
             EditorGUILayout.LabelField("Unity Pro Builder", UnityBuildGUIUtility.mainTitleStyle);
             EditorGUILayout.LabelField("by Elermond Softwares", UnityBuildGUIUtility.subTitleStyle);
-            GUILayout.Space(25);
+            GUILayout.Space(10);
+
+            if (GUILayout.Button("Elermond Page"))
+            {
+                Application.OpenURL("https://bio.link/elermonddev");
+            }
+            GUILayout.Space(15);
         }
 
         private void DrawSendNotifView()
