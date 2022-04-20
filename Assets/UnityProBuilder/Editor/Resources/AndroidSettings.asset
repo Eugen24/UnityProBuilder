@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 52
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b9090af1c6196114589ca556beb008bd, type: 3}
+  m_Name: AndroidSettings
+  m_EditorClassIdentifier: 
+  m_MinSize: {x: 100, y: 100}
+  m_MaxSize: {x: 4000, y: 4000}
+  m_TitleContent:
+    m_Text: UnityProBuilder.Editor.Scripts.AndroidBuildManager
+    m_Image: {fileID: 0}
+    m_Tooltip: 
+  m_Pos:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 320
+    height: 550
+  m_ViewDataDictionary: {fileID: 0}
+  _telegramToken: 
+  _telegramChatId: 
+  _mailSendAddress: 
+  _mailSendPass: 
+  sendToList: []
+  _keystorePathName: Assets/Resources/UnityProBuilder/GPlay/user.keystore
+  _keyAliasName: 
+  showBtn: 0
+  notificationSend: 0
+  telegramSend: 0
+  mailSend: 0
+  telegramApi: 1

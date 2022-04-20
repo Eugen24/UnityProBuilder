@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
+using System.Net.Mail;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
@@ -12,17 +16,39 @@ namespace UnityProBuilder.Editor.Scripts
 {
     public class AndroidBuildManager : EditorWindow
     {
-        [SerializeField] private static string _keystorePathName = "Assets/Template/GPlay/user.keystore";
-        private static string _keystorePassword;
-        [SerializeField] private static string _keyAliasName;
-        private static string _keyAliasPassword;
+        [SerializeField]
+        private string _telegramToken = "";
+        [SerializeField]
+        private string _telegramChatId = "";
 
+        [SerializeField]
+        private string _mailSendAddress = "";
+        [SerializeField]
+        private string _mailSendPass = "";
+
+        [SerializeField]
+        private string[] sendToList;
+
+        [SerializeField] private string _keystorePathName = "Assets/Resources/UnityProBuilder/GPlay/user.keystore";
+        private string _keystorePassword;
+        [SerializeField] private string _keyAliasName;
+        private string _keyAliasPassword;
+
+        [SerializeField]
         private bool showBtn;
-        private bool telegramSend;
 
-        [SerializeField] private static bool _privateGlobalSettings;
-        [SerializeField] private static string _defaultSettingsPath = "Assets/UnityProBuilder/Editor/Resources/";
-        [SerializeField] private static string _defaultSettingsName = "AndroidSettings.asset";
+        [SerializeField]
+        private bool notificationSend;
+        [SerializeField]
+        private bool telegramSend;
+        [SerializeField]
+        private bool mailSend;
+        [SerializeField]
+        private bool telegramApi = true;
+
+        [SerializeField] private static bool _privateGlobalSettings = false;
+        [SerializeField] private static string _defaultSettingsPath = "Assets/UnityProBuilder/Editor/Resources";
+        [SerializeField] private static string _defaultSettingsName = "/AndroidSettings.asset";
         [SerializeField] private static AndroidBuildManager _settings;
 
         public static AndroidBuildManager SettingsGA
@@ -55,22 +81,121 @@ namespace UnityProBuilder.Editor.Scripts
             if (_privateGlobalSettings) return;
 
             InitSettings1();
-            //CreateSettingsInstance();
+            CreateSettingsInstance();
         }
 
-        [MenuItem("UnityProBuilder/Build Project/Android Build/Publishing")]
+        [MenuItem("UnityProBuilder/Create a new settings asset/Android")]
+        private static void CreateSettingsInstance()
+        {
+            try
+            {
+#if UNITY_EDITOR
+                if (_settings == null)
+                {
+                    //If the settings asset doesn't exist, then create it. We require a resources folder
+                    //if (!Directory.Exists(Application.dataPath + "Assets/UnityProBuilder/Editor"))
+                    //{
+                    //    Directory.CreateDirectory(Application.dataPath + "Assets/UnityProBuilder/Editor");
+                    //}
+                    Debug.Log(Application.dataPath);
+                    if (!Directory.Exists(Application.dataPath + "/UnityProBuilder/Editor/Resources"))
+                    {
+                        Directory.CreateDirectory(Application.dataPath + "/UnityProBuilder/Editor/Resources");
+                        Debug.LogWarning("UnityProBuilder: Resources/UnityProBuilder folder is required to store settings. it was created ");
+                    }
+
+                    string path = _defaultSettingsPath + _defaultSettingsName;
+                    if (File.Exists(path))
+                    {
+                        AssetDatabase.DeleteAsset(path);
+                        AssetDatabase.Refresh();
+                    }
+
+                    var asset = CreateInstance<AndroidBuildManager>();
+                    AssetDatabase.CreateAsset(asset, path);
+                    AssetDatabase.Refresh();
+
+                    AssetDatabase.SaveAssets();
+                    Debug.LogWarning("UnityProBuilder: Settings file didn't exist and was created");
+                    Selection.activeObject = asset;
+
+                    //save reference
+                    _settings = asset;
+                }
+#endif
+            }
+            catch (Exception e)
+            {
+                Debug.Log("Error getting Settings in InitAPI: " + e.Message);
+            }
+        }
+
+        [MenuItem("UnityProBuilder/Build Project/Android Build")]
         public static void Init()
         {
-            //GetWindow<AndroidBuild>("Publishing Android Build");
+            GetWindow<AndroidBuildManager>("Publishing Android Build");
         }
-        
+
         private void OnGUI()
         {
+            InitAPI();
             DrawTitle();
 
-            telegramSend = EditorGUILayout.Toggle("Send Notif to Telegram", telegramSend);
+            _privateGlobalSettings = EditorGUILayout.Toggle("Private Settings", _privateGlobalSettings);
+            _settings = (AndroidBuildManager)EditorGUILayout.ObjectField("Settings", _settings, typeof(AndroidBuildManager), _privateGlobalSettings);
 
-            showBtn = EditorGUILayout.Toggle("Temporary Build", showBtn);
+            DrawSendNotifView();
+            DrawBuildDataActionView();
+        }
+
+        private void DrawTitle()
+        {
+            EditorGUILayout.LabelField("Unity Pro Builder", UnityBuildGUIUtility.mainTitleStyle);
+            EditorGUILayout.LabelField("by Elermond Softwares", UnityBuildGUIUtility.subTitleStyle);
+            GUILayout.Space(25);
+        }
+
+        private void DrawSendNotifView()
+        {
+            notificationSend = EditorGUILayout.Toggle("Send Build Status Notif.", notificationSend);
+            if (notificationSend)
+            {
+                telegramSend = EditorGUILayout.Toggle("Telegram Send", telegramSend);
+                if (telegramSend)
+                {
+                    telegramApi = EditorGUILayout.Toggle("TelegramApi", true);
+
+                    if (telegramApi)
+                    {
+                        _telegramToken = EditorGUILayout.TextField("Your Token", _telegramToken);
+                        _telegramChatId = EditorGUILayout.TextField("Your Chat Id", _telegramChatId);
+
+                        if (GUILayout.Button("Test Notification"))
+                        {
+                            if (ValidTelegramIds()) TelegramSendMessage(_telegramToken, _telegramChatId, "Test");
+                            else Debug.LogError("Invalid Telegram Bot Token & Invalid Chat Id!");
+                        }
+                    }
+                }
+
+                mailSend = EditorGUILayout.Toggle("Mail Send", mailSend);
+                if (mailSend)
+                {
+                    _mailSendAddress = EditorGUILayout.TextField("Your Send Mail", _mailSendAddress);
+                    _mailSendPass = EditorGUILayout.TextField("Your Send Mail Pass", _mailSendPass);
+
+                    if (GUILayout.Button("Test Notification"))
+                    {
+                        if (ValidMailAddress()) SendMail(_mailSendAddress, _mailSendPass, "Test");
+                        else Debug.LogError("Invalid Mail Address & Password!");
+                    }
+                }
+            }
+        }
+
+        private void DrawBuildDataActionView()
+        {
+            showBtn = EditorGUILayout.Toggle("Temporary Android Build", showBtn);
             if (!showBtn)
             {
                 if (GUILayout.Button("Select Keystore"))
@@ -80,16 +205,14 @@ namespace UnityProBuilder.Editor.Scripts
 
                 _keystorePathName = EditorGUILayout.TextField("Keystore Path", _keystorePathName);
                 _keystorePassword = EditorGUILayout.PasswordField("Keystore Password", _keystorePassword);
-                //Alias Data
                 _keyAliasName = EditorGUILayout.TextField("Keystore Alias Name", _keyAliasName);
                 _keyAliasPassword = EditorGUILayout.PasswordField("Keystore Alias Password", _keyAliasPassword);
 
-                if (GUILayout.Button("Build All"))
+                if (GUILayout.Button("Build"))
                 {
-                    if (EditorUtility.DisplayDialog("Build All", "You are sure you want to Build for all selected platforms?", "Ok", "No"))
+                    if (EditorUtility.DisplayDialog("Build Android With Keystore", "You are sure you want to Build for selected platform?", "Ok", "No"))
                     {
                         Build_Android();
-                        WindowsBuild();
                     }
                 }
             }
@@ -97,21 +220,14 @@ namespace UnityProBuilder.Editor.Scripts
             {
                 if (GUILayout.Button("Build with Temp Keystore"))
                 {
-                    if(EditorUtility.DisplayDialog("Build with Temp Keystore", "You are sure you want to build?", "Ok", "No"))
+                    if (EditorUtility.DisplayDialog("Build with Temp Keystore", "You are sure you want to build?", "Ok", "No"))
                     {
                         Build_Android();
                     }
                 }
             }
         }
-        
-        private void DrawTitle()
-        {
-            EditorGUILayout.LabelField("Unity Pro Builder", UnityBuildGUIUtility.mainTitleStyle);
-            EditorGUILayout.LabelField("by Elermond Softwares", UnityBuildGUIUtility.subTitleStyle);
-            GUILayout.Space(25);
-        }
-        
+
         //TODO: Clear unused functions
         private static void SetKeystorePath()
         {
@@ -128,7 +244,7 @@ namespace UnityProBuilder.Editor.Scripts
                 else
                 {
                     selectedPath = selectedPath.Replace("/Assets", "");
-                    _keystorePathName = selectedPath;
+                    _settings._keystorePathName = selectedPath;
                 }
 
                 // Just in case we are saving to the asset folder, tell Unity to scan for modified or new assets
@@ -167,7 +283,7 @@ namespace UnityProBuilder.Editor.Scripts
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.All;
             PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
             PlayerSettings.Android.useCustomKeystore = true;
-            PlayerSettings.Android.keystoreName = _keystorePathName;
+            PlayerSettings.Android.keystoreName = _settings._keystorePathName;
             PlayerSettings.Android.keystorePass = "marsdigger";
             PlayerSettings.Android.keyaliasName = "mars";
             PlayerSettings.Android.keyaliasPass = "digger";
@@ -266,6 +382,52 @@ namespace UnityProBuilder.Editor.Scripts
             {
                 WriteToFile("AndroidLogError", fileOnFinish.ToString());
             }
+        }
+
+        public static bool ValidMailAddress()
+        {
+            return !string.IsNullOrEmpty(_settings._mailSendAddress) && !string.IsNullOrEmpty(_settings._mailSendPass);
+        }
+
+        public void SendMail(string sendFrom = "digup.test1@gmail.com", string sendFromPass = "diguptest@2022", string mailBody = "Test Mail Body",
+            string mailSubject = "Report Mail")
+        {
+            MailMessage mail = new MailMessage
+            {
+                From = new MailAddress(sendFrom)
+            };
+
+            for (int i = 0; i < sendToList.Length; i++)
+            {
+                mail.To.Add(sendToList[i]);
+            }
+            mail.Subject = mailSubject;
+            mail.Body = mailBody;
+
+            SmtpClient smtpServer = new SmtpClient("smtp.gmail.com")
+            {
+                Port = 587,
+                Credentials = new NetworkCredential(sendFrom, sendFromPass),
+                EnableSsl = true
+            };
+            ServicePointManager.ServerCertificateValidationCallback =
+                delegate (object s, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+                { return true; };
+            smtpServer.Send(mail);
+
+            //Debug.Log("Succesfully Sent! >>>" + sendTo + " Body: " + mailBody);
+        }
+
+        public static bool ValidTelegramIds()
+        {
+            return !string.IsNullOrEmpty(_settings._telegramToken) && !string.IsNullOrEmpty(_settings._telegramToken);
+        }
+
+        public static string TelegramSendMessage(string apilToken, string destID, string text)
+        {
+            string urlString = $"https://api.telegram.org/bot{apilToken}/sendMessage?chat_id={destID}&text={text}";
+            WebClient webclient = new WebClient();
+            return webclient.DownloadString(urlString);
         }
 
         /// <summary>

@@ -79,10 +79,10 @@ namespace UnityProBuilder.Editor.Scripts
             private set { _settings = value; }
         }
 
-        [MenuItem("UnityProBuilder/Build Project/Android Build/Publishing")]
+        [MenuItem("UnityProBuilder/Build Project/All Platforms Build")]
         public static void Init()
         {
-            GetWindow<UnityProBuilder>("Publishing Android Build");
+            GetWindow<UnityProBuilder>("Publishing All Platforms");
         }
 
         public static void InitSettings1()
@@ -105,7 +105,7 @@ namespace UnityProBuilder.Editor.Scripts
             CreateSettingsInstance();
         }
 
-        [MenuItem("UnityProBuilder/Create a new settings asset")]
+        [MenuItem("UnityProBuilder/Create a new settings asset/Main")]
         private static void CreateSettingsInstance()
         {
             try
@@ -114,17 +114,19 @@ namespace UnityProBuilder.Editor.Scripts
                 if (_settings == null)
                 {
                     //If the settings asset doesn't exist, then create it. We require a resources folder
-                    if (!Directory.Exists(Application.dataPath + "/" + _defaultSettingsPath))
+                    //if (!Directory.Exists(Application.dataPath + "/" + _defaultSettingsPath))
+                    //{
+                    //    Directory.CreateDirectory(Application.dataPath + "/" + _defaultSettingsPath);
+                    //}
+
+                    Debug.Log(Application.dataPath);
+                    if (!Directory.Exists(Application.dataPath + "/UnityProBuilder/Editor/Resources"))
                     {
-                        Directory.CreateDirectory(Application.dataPath + "/" + _defaultSettingsPath);
-                    }
-                    if (!Directory.Exists(Application.dataPath + "/" + _defaultSettingsPath))
-                    {
-                        Directory.CreateDirectory(Application.dataPath + "/" + _defaultSettingsPath);
+                        Directory.CreateDirectory(Application.dataPath + "/UnityProBuilder/Editor/Resources");
                         Debug.LogWarning("UnityProBuilder: Resources/UnityProBuilder folder is required to store settings. it was created ");
                     }
 
-                    string path = "Assets/" + _defaultSettingsPath + "/MainSettings.asset";
+                    string path = _defaultSettingsPath + _defaultSettingsName;
                     if (File.Exists(path))
                     {
                         AssetDatabase.DeleteAsset(path);
